@@ -34,7 +34,7 @@ bycaller <- batcalls %>%
 #tests for difference between groups ('testfac')
 #groups and subjects ('contrfac') have to numbered consecutively and with integers beginning with 1
 
-pDFA <- function(xdata, test_fac, contr_fac, variables, n.sel = 100, nperm = 1000) {
+pDFA <- function(xdata, test_fac, contr_fac, variables, n.sel = 10, nperm = 1000) {
   if (is.factor(test_fac)==F) {test_fac=as.factor(test_fac)}
   model=paste("lda(test_fac~",variables,", prior=pr_prob, subset=sel.index, data=xdata)",sep="")
   f.table=as.data.frame(table(contr_fac))

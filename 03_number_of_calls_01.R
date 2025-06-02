@@ -36,14 +36,29 @@ bats.used
 
 # load and wrangle social data ----
 
+# function to make scale() function return a vector not a matrix
+scale2 <- function(x){as.vector(scale(x, scale = FALSE))}
+
 # already trimmed bat donations list
-donations <- read.csv('OSU_2024_social_data.csv')
+raw <- read.csv('OSU_2024_social_data.csv')
+
+raw$Date <- as.Date(raw$Date, format = "%m/%d/%Y")
+
+donations <- raw %>% 
+  filter(Date < "2024-09-01")
+
+# how many hours of video data were scored?
+hours <- length(unique(donations$Date))
+seconds <- hours*3600
+# matches Haley's personal communication
+
 donations$Actor <- tolower(donations$Actor)
 donations$Receiver <- tolower(donations$Receiver)
 
 bat.donations <- donations %>% 
   filter(Actor %in% bats.used) %>% 
-  filter(Receiver %in% bats.used)
+  filter(Receiver %in% bats.used) %>% 
+  mutate(rate2 = rate/seconds)
 
 # make foodsharing matrix
 ratesf <-
@@ -51,12 +66,13 @@ ratesf <-
   filter(Behavior == "Mouthlicking") %>% 
   mutate(edge= paste(Actor, Receiver, sep="_")) %>%
   group_by(edge) %>%
-  summarize(rate= sum(rate, na.rm=T)) %>%
-  filter(rate>=0) %>%
-  separate(edge, into=c('Actor', 'Receiver'))
+  summarize(rate2= sum(rate2, na.rm=T)) %>%
+  filter(rate2>=0) %>%
+  separate(edge, into=c('Actor', 'Receiver')) %>% 
+  mutate(across(.cols=rate2, .fns = scale2))
 
 netf <- graph_from_data_frame(ratesf)
-mf <- as_adjacency_matrix(netf, attr= 'rate', sparse=F)
+mf <- as_adjacency_matrix(netf, attr= 'rate2', sparse=F)
 
 # make grooming matrix
 ratesg <-
@@ -64,12 +80,13 @@ ratesg <-
   filter(Behavior == "Grooming") %>%
   mutate(edge= paste(Actor, Receiver, sep="_")) %>%
   group_by(edge) %>%
-  summarize(rate= sum(rate, na.rm=T)) %>%
-  filter(rate>=0) %>%
-  separate(edge, into=c('Actor', 'Receiver'))
+  summarize(rate2= sum(rate2, na.rm=T)) %>%
+  filter(rate2>=0) %>%
+  separate(edge, into=c('Actor', 'Receiver')) %>% 
+  mutate(across(.cols=rate2, .fns = scale2))
 
 netg <- graph_from_data_frame(ratesg)
-mg <- as_adjacency_matrix(netg, attr= 'rate', sparse=F)
+mg <- as_adjacency_matrix(netg, attr= 'rate2', sparse=F)
 
 # make combined "affiliation rate"
 # NOTE: don't know possible grooming/foodsharing seconds, but should be the same for all dyads?
@@ -79,12 +96,13 @@ ratesa <-
   filter(Behavior != "Aggression") %>% 
   mutate(edge= paste(Actor, Receiver, sep="_")) %>%
   group_by(edge) %>%
-  summarize(rate= sum(rate, na.rm=T)) %>%
-  filter(rate>=0) %>%
-  separate(edge, into=c('Actor', 'Receiver'))
+  summarize(rate2= sum(rate2, na.rm=T)) %>%
+  filter(rate2>=0) %>%
+  separate(edge, into=c('Actor', 'Receiver')) %>% 
+  mutate(across(.cols=rate2, .fns = scale2))
 
 neta <- graph_from_data_frame(ratesa)
-ma <- as_adjacency_matrix(neta, attr= 'rate', sparse=F)
+ma <- as_adjacency_matrix(neta, attr= 'rate2', sparse=F)
 
 
 # make the STRAND data structure ----
@@ -94,7 +112,8 @@ chars$Bat.name <- tolower(chars$Bat.name)
 
 batchars <- chars %>% 
   filter(Bat.name %in% bats.used) %>% 
-  select(Age)
+  select(Age) %>% 
+  mutate(across(.cols=Age, .fns = scale2))
 
 rownames(batchars) <- bats.used
 
